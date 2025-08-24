@@ -1,1 +1,2 @@
 pygame>=2.5.0
+buildozer>=1.5.0

@@ -18,7 +18,7 @@ class Config:
     min_start_dist: int = 12                  # min Chebyshev distance human↔hunter
     obstacles_enabled_default: bool = True
     obstacle_density: float = 0.10            # 0.0–0.4 reasonable
-    tree_ratio: float = 0.5               # fraction of obstacles drawn as trees vs boulders
+    tree_ratio: float = 0.5                   # fraction of obstacles drawn as trees vs boulders
     # Fire system
     fire_max: int = 5
     fire_lifetime: int = 8           # measured in sub-turns
@@ -37,8 +37,13 @@ class Config:
         "tree_leaf": (46, 160, 67),
         "tree_trunk": (110, 78, 48),
         "rock":      (120, 120, 130),
+        # Fire palette (keeps legacy keys as fallbacks)
         "fire_core": (255, 120, 40),
         "fire_glow": (255, 200, 60),
+        "fire_orange": (255, 140, 60),
+        "fire_yellow": (255, 210, 90),
+        "fire_red":    (220, 70, 50),
+        "fire_white":  (255, 245, 220),
     })
 
     @staticmethod

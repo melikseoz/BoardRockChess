@@ -1,0 +1,47 @@
+{
+  "grid_w": 40,
+  "grid_h": 40,
+  "cell": 18,
+  "margin": 1,
+  "fps": 60,
+  "min_start_dist": 12,
+  "obstacles_enabled_default": true,
+  "obstacle_density": 0.1,
+  "colors": {
+    "bg": [
+      18,
+      18,
+      20
+    ],
+    "grid": [
+      35,
+      35,
+      40
+    ],
+    "human": [
+      255,
+      100,
+      90
+    ],
+    "hunter": [
+      71,
+      130,
+      55
+    ],
+    "target": [
+      51,
+      168,
+      222
+    ],
+    "obstacle": [
+      80,
+      80,
+      88
+    ],
+    "text": [
+      230,
+      230,
+      235
+    ]
+  }
+}

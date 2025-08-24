@@ -1,11 +1,11 @@
 
-# Hunter–Human–Target (Prototype)
+# Hunter–Human–Target (Canvas Fire Build)
 
-A tiny turn-based prototype built with Pygame.
+Exported directly from the Canvas document. Uses Pygame.
 
 ## Install
 ```bash
-pip install -r requirements.txt
+pip install pygame
 ```
 
 ## Run
@@ -17,7 +17,5 @@ python main.py
 - Movement: **QWE / ASD / ZXC** (8 directions)
 - **S** = Skip turn
 - **O** = Toggle obstacles
+- **R** = Restart round
 - **ESC** = Quit
-
-Turn order repeats: **Human → Hunter → Human → Hunter → Target**.
-First to touch the Target wins.

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Tuple, Dict
@@ -19,6 +18,12 @@ class Config:
     min_start_dist: int = 12                  # min Chebyshev distance human↔hunter
     obstacles_enabled_default: bool = True
     obstacle_density: float = 0.10            # 0.0–0.4 reasonable
+    tree_ratio: float = 0.5               # fraction of obstacles drawn as trees vs boulders
+    # Fire system
+    fire_max: int = 5
+    fire_lifetime: int = 8           # measured in sub-turns
+    fire_spawn_chance: float = 0.25  # attempt per sub-turn, at most 1 fire spawned
+    respawn_delay: int = 5           # sub-turns until an actor respawns
 
     # Colors
     colors: Dict[str, Color] = field(default_factory=lambda: {
@@ -29,6 +34,11 @@ class Config:
         "target":    (51, 168, 222),
         "obstacle":  (80, 80, 88),
         "text":      (230, 230, 235),
+        "tree_leaf": (46, 160, 67),
+        "tree_trunk": (110, 78, 48),
+        "rock":      (120, 120, 130),
+        "fire_core": (255, 120, 40),
+        "fire_glow": (255, 200, 60),
     })
 
     @staticmethod
@@ -40,7 +50,8 @@ class Config:
                     data = json.load(f)
                 # known simple fields
                 for k in ("grid_w","grid_h","cell","margin","fps","min_start_dist",
-                          "obstacles_enabled_default","obstacle_density"):
+                          "obstacles_enabled_default","obstacle_density","tree_ratio",
+                          "fire_max","fire_lifetime","fire_spawn_chance","respawn_delay"):
                     if k in data:
                         setattr(cfg, k, data[k])
                 # colors

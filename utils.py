@@ -1,6 +1,5 @@
-
 from __future__ import annotations
-from typing import Tuple, Set, List
+from typing import Tuple, Set, List, Dict
 import random
 
 Vec = Tuple[int, int]
@@ -39,7 +38,7 @@ def random_in_quadrant(q: int, w: int, h: int) -> Vec:
     y = random.randint(y0 + margin, y0 + hq - 1 - margin)
     return (x, y)
 
-def pick_start_positions(w: int, h: int, min_start_dist: int):
+def pick_start_positions(w: int, h: int, min_start_dist: int) -> Tuple[Vec, Vec, Vec]:
     # human & hunter opposite quadrants
     opposite = {0:3, 1:2, 2:1, 3:0}
     while True:
@@ -90,16 +89,18 @@ def pick_start_positions(w: int, h: int, min_start_dist: int):
                     break
     return human, hunter, target  # type: ignore
 
-def generate_obstacles(w: int, h: int, density: float, exclude: Set[Vec]) -> Set[Vec]:
+
+def generate_obstacles(w: int, h: int, density: float, exclude: Set[Vec], tree_ratio: float = 0.5) -> Tuple[Set[Vec], Dict[Vec, str]]:
     obstacles: Set[Vec] = set()
-    import random as _r
+    styles: Dict[Vec, str] = {}
     for y in range(h):
         for x in range(w):
             p = (x, y)
             if p in exclude:
                 continue
-            if _r.random() < density:
+            if random.random() < density:
                 obstacles.add(p)
+                styles[p] = 'tree' if random.random() < tree_ratio else 'rock'
     # keep a 1-cell ring around excluded positions clear
     ring_clear: Set[Vec] = set()
     for e in exclude:
@@ -108,4 +109,6 @@ def generate_obstacles(w: int, h: int, density: float, exclude: Set[Vec]) -> Set
                 q = (e[0] + dx, e[1] + dy)
                 if in_bounds(q, w, h):
                     ring_clear.add(q)
-    return {p for p in obstacles if p not in ring_clear}
+    filtered = {p for p in obstacles if p not in ring_clear}
+    styles = {p: styles[p] for p in filtered if p in styles}
+    return filtered, styles

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from typing import Optional, Set, List
 from utils import Vec, add, cheb, legal_neighbors
@@ -8,6 +7,18 @@ class Actor:
         self.name = name
         self.color = color
         self.pos: Vec = pos
+        # life/death tracking
+        self.deaths: int = 0
+        self.dead: bool = False
+        self.respawn_ticks: int = 0
+        self.last_death_pos: Optional[Vec] = None
+
+    @property
+    def alive(self) -> bool:
+        return not self.dead
+
+    def set_pos(self, p: Vec) -> None:
+        self.pos = p
 
     def set_pos(self, p: Vec) -> None:
         self.pos = p
@@ -29,6 +40,7 @@ class HunterCPU(Actor):
         options = legal_neighbors(self.pos, w, h, obstacles, obstacles_enabled)
         options.append(self.pos)  # stay if blocked
         best_dist = min(cheb(q, target) for q in options)
+        # all best moves toward target
         best = [q for q in options if cheb(q, target) == best_dist]
         return best[0]
 

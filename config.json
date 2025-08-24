@@ -7,6 +7,11 @@
   "min_start_dist": 12,
   "obstacles_enabled_default": true,
   "obstacle_density": 0.1,
+  "tree_ratio": 0.5,
+  "fire_max": 5,
+  "fire_lifetime": 8,
+  "fire_spawn_chance": 0.25,
+  "respawn_delay": 5,
   "colors": {
     "bg": [
       18,
@@ -42,6 +47,31 @@
       230,
       230,
       235
+    ],
+    "tree_leaf": [
+      46,
+      160,
+      67
+    ],
+    "tree_trunk": [
+      110,
+      78,
+      48
+    ],
+    "rock": [
+      120,
+      120,
+      130
+    ],
+    "fire_core": [
+      255,
+      120,
+      40
+    ],
+    "fire_glow": [
+      255,
+      200,
+      60
     ]
   }
 }

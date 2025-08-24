@@ -2,11 +2,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Set, Dict
 import random
-from utils import Vec, in_bounds, cheb
+from utils import Vec, cheb
 
 @dataclass
 class Fire:
-    cells: List[Vec]
+    top_left: Vec           # anchor of the 2×2 block
+    cells: List[Vec]        # the four cells this fire occupies
     expires_at: int
 
 class FireSystem:
@@ -54,12 +55,13 @@ class FireSystem:
         if not self.can_place_fire(top_left, obstacles_styles):
             return False
         cells = self.rect_cells(top_left)
-        # destroy trees inside the fire area
+        # destroy trees inside the fire area (rocks survive)
         for c in cells:
             if c in obstacles and obstacles_styles.get(c) == 'tree':
                 obstacles.remove(c)
                 obstacles_styles.pop(c, None)
-        self.fires.append(Fire(cells=cells, expires_at=step_counter + self.cfg.fire_lifetime))
+        # store as ONE fire instance
+        self.fires.append(Fire(top_left=top_left, cells=cells, expires_at=step_counter + self.cfg.fire_lifetime))
         return True
 
     def maybe_spawn(self, step_counter: int, obstacles: Set[Vec], obstacles_styles: Dict[Vec, str]) -> bool:
@@ -76,6 +78,9 @@ class FireSystem:
         return False
 
     def draw(self, screen, cfg, step_counter: int) -> None:
+        """
+        Draw ONE large flame per 2×2 fire, with a soft dark drop-shadow.
+        """
         import pygame
         cell = cfg.cell
         # Palette with sensible fallbacks
@@ -83,12 +88,13 @@ class FireSystem:
         col_yellow = cfg.colors.get('fire_yellow', cfg.colors.get('fire_glow', (255, 200, 60)))
         col_red    = cfg.colors.get('fire_red',    (220, 70, 50))
         col_white  = cfg.colors.get('fire_white',  (255, 245, 220))
+        col_shadow = cfg.colors.get('fire_shadow', (0, 0, 0))
 
-        def flame_surface(cell: int, x: int, y: int, t: int) -> pygame.Surface:
-            # Off-screen surface with alpha so flames layer nicely over obstacles/actors
-            surf = pygame.Surface((cell, cell), pygame.SRCALPHA)
-            # Deterministic per-cell flicker (no global RNG use → reproducible frames)
-            h = (x*73856093 ^ y*19349663 ^ t*83492791) & 0xffffffff
+        def flame_surface(size: int, seedx: int, seedy: int, t: int) -> pygame.Surface:
+            # Off-screen surface sized to cover the full 2×2 area
+            surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            # Deterministic flicker so each fire has a stable, lively motion
+            h = (seedx*73856093 ^ seedy*19349663 ^ t*83492791) & 0xffffffff
             def rand01():
                 nonlocal h
                 h ^= (h << 13) & 0xffffffff
@@ -96,52 +102,85 @@ class FireSystem:
                 h ^= (h << 5)  & 0xffffffff
                 return (h & 0xffff) / 65535.0
 
-            # Flicker wobble
-            wobble = int(rand01() * (cell * 0.15))
-            base_w = max(3, int(cell * 0.70) - wobble)
-            base_h = max(3, int(cell * 0.50) - wobble // 2)
+            # Base geometry scaled to the 2x2 size
+            wobble = int(rand01() * (size * 0.06))
+            base_w = max(4, int(size * 0.55) - wobble)
+            base_h = max(4, int(size * 0.35) - wobble // 2)
 
             # 1) Soft radial glow
-            glow_r = int(max(cell * 0.55, base_w * 0.6))
-            pygame.draw.circle(surf, (*col_yellow, 120), (cell // 2, cell // 2), glow_r)
+            glow_r = int(max(size * 0.45, base_w * 0.55))
+            pygame.draw.circle(surf, (*col_yellow, 120), (size // 2, size // 2), glow_r)
 
             # 2) Ember base (red ellipse at bottom)
             pygame.draw.ellipse(
                 surf, (*col_red, 220),
-                (cell // 2 - base_w // 2, cell - base_h - 2, base_w, base_h)
+                (size // 2 - base_w // 2, size - base_h - 4, base_w, base_h)
             )
 
             # 3) Outer flame body (teardrop-ish polygon)
-            tip_x = cell // 2 + int((rand01() - 0.5) * (cell * 0.15))
-            tip_y = 2 + int(rand01() * 2)
-            left   = (cell // 2 - base_w // 2, cell - base_h - 2)
-            right  = (cell // 2 + base_w // 2, cell - base_h - 2)
-            midL   = (left[0]  + int(base_w * 0.15), cell - int(base_h * 0.55))
-            midR   = (right[0] - int(base_w * 0.15), cell - int(base_h * 0.55))
-            body   = [ (tip_x, tip_y), midR, right, (cell // 2, cell - 2), left, midL ]
+            tip_x = size // 2 + int((rand01() - 0.5) * (size * 0.06))
+            tip_y = 4 + int(rand01() * 4)
+            left   = (size // 2 - base_w // 2, size - base_h - 4)
+            right  = (size // 2 + base_w // 2, size - base_h - 4)
+            midL   = (left[0]  + int(base_w * 0.16), size - int(base_h * 0.60))
+            midR   = (right[0] - int(base_w * 0.16), size - int(base_h * 0.60))
+            body   = [ (tip_x, tip_y), midR, right, (size // 2, size - 4), left, midL ]
             pygame.draw.polygon(surf, (*col_orange, 255), body)
 
             # 4) Inner bright flame (smaller teardrop)
-            inner_w = int(base_w * 0.45)
-            inner_h = int(base_h * 0.65)
-            inner_tip   = (tip_x, tip_y + 2)
-            inner_left  = (cell // 2 - inner_w // 2, cell - inner_h - 4)
-            inner_right = (cell // 2 + inner_w // 2, cell - inner_h - 4)
-            inner_midL  = (inner_left[0]  + int(inner_w * 0.18), cell - int(inner_h * 0.55))
-            inner_midR  = (inner_right[0] - int(inner_w * 0.18), cell - int(inner_h * 0.55))
-            inner       = [ inner_tip, inner_midR, inner_right, (cell // 2, cell - 4), inner_left, inner_midL ]
+            inner_w = int(base_w * 0.50)
+            inner_h = int(base_h * 0.70)
+            inner_tip   = (tip_x, tip_y + 3)
+            inner_left  = (size // 2 - inner_w // 2, size - inner_h - 6)
+            inner_right = (size // 2 + inner_w // 2, size - inner_h - 6)
+            inner_midL  = (inner_left[0]  + int(inner_w * 0.18), size - int(inner_h * 0.58))
+            inner_midR  = (inner_right[0] - int(inner_w * 0.18), size - int(inner_h * 0.58))
+            inner       = [ inner_tip, inner_midR, inner_right, (size // 2, size - 6), inner_left, inner_midL ]
             pygame.draw.polygon(surf, (*col_yellow, 255), inner)
 
             # 5) White-hot core
-            core_w = max(2, int(inner_w * 0.35))
-            core_h = max(2, int(inner_h * 0.35))
+            core_w = max(3, int(inner_w * 0.35))
+            core_h = max(3, int(inner_h * 0.35))
             pygame.draw.ellipse(
                 surf, (*col_white, 230),
-                (cell // 2 - core_w // 2, cell - inner_h - core_h, core_w, core_h)
+                (size // 2 - core_w // 2, size - inner_h - core_h, core_w, core_h)
             )
             return surf
 
+        def shadow_surface(size: int, seedx: int, seedy: int, t: int) -> pygame.Surface:
+            """
+            Soft drop-shadow roughly matching the flame silhouette.
+            Slightly larger and lower, drawn with high transparency.
+            """
+            import pygame
+            surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            # light “breathing” jitter tied to time
+            h = (seedx*2654435761 ^ seedy*974634777 ^ t*19349663) & 0xffffffff
+            def rand01():
+                nonlocal h
+                h ^= (h << 13) & 0xffffffff; h ^= (h >> 17) & 0xffffffff; h ^= (h << 5) & 0xffffffff
+                return (h & 0xffff) / 65535.0
+
+            base_w = max(4, int(size * 0.62))
+            base_h = max(4, int(size * 0.40))
+            glow_r = int(max(size * 0.48, base_w * 0.58))
+            pygame.draw.circle(surf, (*col_shadow, 90), (size // 2, size // 2 + 2), glow_r)
+            pygame.draw.ellipse(surf, (*col_shadow, 110),
+                (size // 2 - base_w // 2, size - base_h, base_w, base_h))
+            tip_x = size // 2 + int((rand01() - 0.5) * (size * 0.04)); tip_y = 6
+            left  = (size // 2 - base_w // 2, size - base_h)
+            right = (size // 2 + base_w // 2, size - base_h)
+            midL  = (left[0]  + int(base_w * 0.16), size - int(base_h * 0.65))
+            midR  = (right[0] - int(base_w * 0.16), size - int(base_h * 0.65))
+            body  = [ (tip_x, tip_y), midR, right, (size // 2, size - 2), left, midL ]
+            pygame.draw.polygon(surf, (*col_shadow, 80), body)
+            return surf
+
         for f in self.fires:
-            for (x, y) in f.cells:
-                rx, ry = x * cell, y * cell
-                screen.blit(flame_surface(cell, x, y, step_counter), (rx, ry))
+            # Draw a single, large flame covering the whole 2×2 area
+            size = cell * 2
+            rx, ry = f.top_left[0] * cell, f.top_left[1] * cell
+            # Shadow first (slight offset), then flame
+            screen.blit(shadow_surface(size, f.top_left[0], f.top_left[1], step_counter),
+                        (rx + max(1, cell // 6), ry + max(1, cell // 5)))
+            screen.blit(flame_surface(size, f.top_left[0], f.top_left[1], step_counter), (rx, ry))

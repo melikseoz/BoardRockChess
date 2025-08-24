@@ -8,9 +8,9 @@
   "obstacles_enabled_default": true,
   "obstacle_density": 0.1,
   "tree_ratio": 0.5,
-  "fire_max": 5,
-  "fire_lifetime": 8,
-  "fire_spawn_chance": 0.25,
+  "fire_max": 6,
+  "fire_lifetime": 12,
+  "fire_spawn_chance": 0.33,
   "respawn_delay": 5,
   "colors": {
     "bg": [

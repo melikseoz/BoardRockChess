@@ -9,12 +9,18 @@ from utils import Vec, add, cheb, DIRS_8, pick_start_positions, generate_obstacl
 from fire import FireSystem
 from actors import HumanPlayer, HunterCPU, TargetCPU
 
+CAPTION = (
+    "Hunter-Human-Target • QWE/ASD/ZXC • S=Skip • O=Obstacles • F=Fullscreen • R=Restart • ESC=Quit"
+)
+
+
 class Game:
     def __init__(self, cfg: Optional[Config] = None) -> None:
         self.cfg = cfg or Config.load()
         self.screen = None
         self.font = None
         self.clock = None
+        self.fullscreen = True
 
         # actors & state
         self.human: HumanPlayer | None = None
@@ -44,11 +50,17 @@ class Game:
     def init_pygame(self) -> None:
         pygame.init()
         pygame.key.set_repeat(0)  # KEYDOWN only (no held-key repeat)
-        self.screen = pygame.display.set_mode((self.cfg.grid_w * self.cfg.cell,
-                                               self.cfg.grid_h * self.cfg.cell))
-        pygame.display.set_caption("Hunter-Human-Target • QWE/ASD/ZXC • S=Skip • O=Obstacles • R=Restart • ESC=Quit")
+        self._apply_display_mode()
         self.font = pygame.font.SysFont("consolas", 18)
         self.clock = pygame.time.Clock()
+
+    def _apply_display_mode(self) -> None:
+        flags = pygame.FULLSCREEN if self.fullscreen else 0
+        self.screen = pygame.display.set_mode(
+            (self.cfg.grid_w * self.cfg.cell, self.cfg.grid_h * self.cfg.cell),
+            flags,
+        )
+        pygame.display.set_caption(CAPTION)
 
     def init_world(self) -> None:
         human_p, hunter_p, target_p = pick_start_positions(self.cfg.grid_w, self.cfg.grid_h, self.cfg.min_start_dist)
@@ -214,6 +226,10 @@ class Game:
         # global controls
         if key == pygame.K_ESCAPE:
             pygame.quit(); sys.exit()
+        if key == pygame.K_f:
+            self.fullscreen = not self.fullscreen
+            self._apply_display_mode()
+            return
         if key == pygame.K_o:
             self.obstacles_enabled = not self.obstacles_enabled
             # re-generate to avoid covering actors
@@ -296,7 +312,7 @@ class Game:
                 self.draw_actor(self.human.pos,  self.cfg.colors["human"])
 
             self.draw_text(f"Turn: {self.turn_order[self.turn_idx].name}   Steps: {self.step_counter}", 8)
-            self.draw_text("Move: QWE/ASD/ZXC • S=Skip • O=Toggle Obstacles • R=Restart • ESC=Quit", 30)
+            self.draw_text("Move: QWE/ASD/ZXC • S=Skip • O=Toggle Obstacles • F=Fullscreen • R=Restart • ESC=Quit", 30)
             self.draw_text(f"Deaths – H:{self.human.deaths}  Hun:{self.hunter.deaths}  T:{self.target.deaths}", 52)
             if self.human.dead:
                 self.draw_text(f"H respawns in {self.human.respawn_ticks}", 72)

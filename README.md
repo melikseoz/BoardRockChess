@@ -5,12 +5,12 @@ Exported directly from the Canvas document. Uses Pygame.
 
 ## Install
 ```bash
-pip install pygame
+uv sync
 ```
 
 ## Run
 ```bash
-python main.py
+uv run main.py
 ```
 
 ## Controls
@@ -25,9 +25,8 @@ The project ships with a `buildozer.spec` configuration for [Buildozer](https://
 To create an Android APK:
 
 ```bash
-# install buildozer and its dependencies (requires Linux)
-pip install buildozer
-buildozer -v android debug
+# requires Linux
+uv run buildozer -v android debug
 ```
 
 The packaged APK will appear in the `bin/` directory.

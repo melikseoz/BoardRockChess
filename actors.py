@@ -1,6 +1,9 @@
 from __future__ import annotations
-from typing import Optional, Set, List
+from typing import Optional, Set, List, TYPE_CHECKING
 from utils import Vec, add, cheb, legal_neighbors
+
+if TYPE_CHECKING:
+    from game import Game
 
 class Actor:
     def __init__(self, name: str, color: tuple[int,int,int], pos: Vec):
@@ -20,8 +23,14 @@ class Actor:
     def set_pos(self, p: Vec) -> None:
         self.pos = p
 
-    def set_pos(self, p: Vec) -> None:
+    def move(self, p: Vec, game: 'Game') -> None:
+        """Move to a new position and check for power-up collisions."""
         self.pos = p
+        for pu in list(getattr(game, 'powerups', [])):
+            if pu.pos == self.pos and pu.active:
+                pu.apply(self, game)
+                if not pu.active and pu in game.powerups:
+                    game.powerups.remove(pu)
 
 class HumanPlayer(Actor):
     """Human-controlled via key mapping handled by Game; this class validates moves."""

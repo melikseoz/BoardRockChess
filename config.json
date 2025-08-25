@@ -12,10 +12,10 @@
   "fire_lifetime": 12,
   "fire_spawn_chance": 0.33,
   "respawn_delay": 5,
-  "powerup_length": 2,
+  "powerup_length": 4,
   "powerup_lifetime": 20,
-  "powerup_spawn_chance": 0.1,
-  "powerup_max": 3,
+  "powerup_spawn_chance": 0.25,
+  "powerup_max": 5,
   "colors": {
     "bg": [
       18,

@@ -9,6 +9,4 @@ dependencies = [
     "setuptools",
     "cython",
     "pip",
-    "colorama",
-    "jinja",
 ]

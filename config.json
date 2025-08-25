@@ -14,8 +14,8 @@
   "respawn_delay": 5,
   "powerup_length": 4,
   "powerup_lifetime": 2000,
-  "powerup_spawn_chance": 0.25,
-  "powerup_max": 5,
+  "powerup_spawn_chance": 0.5,
+  "powerup_max": 10,
   "colors": {
     "bg": [
       18,

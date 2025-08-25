@@ -148,6 +148,13 @@ class Game:
             if a and a.alive and self.fire.cell_in_fire(a.pos):
                 self.kill_actor(a)
 
+    def update_powerups(self) -> None:
+        """Tick power-ups and remove any that expired."""
+        for pu in list(self.powerups):
+            pu.tick()
+            if not pu.active:
+                self.powerups.remove(pu)
+
     def maybe_spawn_powerup(self) -> None:
         if len(self.powerups) >= self.cfg.powerup_max:
             return
@@ -166,7 +173,7 @@ class Game:
             if self.fire and self.fire.cell_in_fire(pos):
                 continue
             cls = random.choice([SpeedPowerUp, TimeStopPowerUp])
-            self.powerups.append(cls(pos))
+            self.powerups.append(cls(pos, self.cfg.powerup_lifetime))
             break
 
     def post_step(self) -> None:
@@ -175,6 +182,7 @@ class Game:
             self.fire.update(self.step_counter)
             self.fire.maybe_spawn(self.step_counter, self.obstacles, self.obstacles_styles)
             self.check_fire_kills()
+        self.update_powerups()
         self.maybe_spawn_powerup()
         # handle respawn countdowns
         self.decrement_respawns()

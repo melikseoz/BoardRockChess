@@ -8,7 +8,7 @@ from config import Config
 from utils import Vec, add, cheb, DIRS_8, pick_start_positions, generate_obstacles
 from fire import FireSystem
 from actors import HumanPlayer, HunterCPU, TargetCPU
-from powerups import PowerUp, TeleportPowerUp, HealPowerUp
+from powerups import PowerUp, SpeedPowerUp, TimeStopPowerUp
 
 CAPTION = (
     "Hunter-Human-Target • QWE/ASD/ZXC • S=Skip • O=Obstacles • F=Fullscreen • R=Restart • ESC=Quit"
@@ -165,7 +165,7 @@ class Game:
                 continue
             if self.fire and self.fire.cell_in_fire(pos):
                 continue
-            cls = random.choice([TeleportPowerUp, HealPowerUp])
+            cls = random.choice([SpeedPowerUp, TimeStopPowerUp])
             self.powerups.append(cls(pos))
             break
 
@@ -283,13 +283,23 @@ class Game:
 
         # turn-based controls: only on human’s sub-turn
         current = self.turn_order[self.turn_idx]
-        if self.winner is None and current is self.human and self.human.alive:
+        if self.winner is None and current is self.human and self.human.alive and self.human.skip_turns == 0:
             if key in self.key_to_dir:
                 delta = self.key_to_dir[key]
+                moved = False
                 if self.human.try_move(delta, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled):
+                    moved = True
                     self.human.move(self.human.pos, self)
                     if self.fire and self.fire.cell_in_fire(self.human.pos):
                         self.kill_actor(self.human)
+                    if self.human.alive and self.human.speed_turns > 0 and delta is not None:
+                        if self.human.try_move(delta, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled):
+                            self.human.move(self.human.pos, self)
+                            if self.fire and self.fire.cell_in_fire(self.human.pos):
+                                self.kill_actor(self.human)
+                if moved:
+                    if self.human.speed_turns > 0:
+                        self.human.speed_turns -= 1
                     self.advance_turn()
                     self.check_win_after_move()
                     self.post_step()
@@ -314,7 +324,12 @@ class Game:
             # AI sub-turns resolve automatically
             if self.winner is None:
                 current = self.turn_order[self.turn_idx]
-                if current is self.human:
+                if getattr(current, 'skip_turns', 0) > 0:
+                    current.skip_turns -= 1
+                    if getattr(current, 'speed_turns', 0) > 0:
+                        current.speed_turns -= 1
+                    self.advance_turn(); self.post_step()
+                elif current is self.human:
                     if self.human.alive:
                         pass  # wait for keydown (one move per press)
                     else:
@@ -326,6 +341,13 @@ class Game:
                         self.hunter.move(nxt, self)
                         if self.fire and self.fire.cell_in_fire(self.hunter.pos):
                             self.kill_actor(self.hunter)
+                        if self.hunter.alive and self.hunter.speed_turns > 0:
+                            nxt = self.hunter.decide(self.target.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
+                            self.hunter.move(nxt, self)
+                            if self.fire and self.fire.cell_in_fire(self.hunter.pos):
+                                self.kill_actor(self.hunter)
+                        if self.hunter.speed_turns > 0:
+                            self.hunter.speed_turns -= 1
                     self.advance_turn(); self.check_win_after_move(); self.post_step()
                 elif current is self.target:
                     if self.target.alive:
@@ -333,6 +355,13 @@ class Game:
                         self.target.move(nxt, self)
                         if self.fire and self.fire.cell_in_fire(self.target.pos):
                             self.kill_actor(self.target)
+                        if self.target.alive and self.target.speed_turns > 0:
+                            nxt = self.target.decide(self.human.pos, self.hunter.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
+                            self.target.move(nxt, self)
+                            if self.fire and self.fire.cell_in_fire(self.target.pos):
+                                self.kill_actor(self.target)
+                        if self.target.speed_turns > 0:
+                            self.target.speed_turns -= 1
                     self.advance_turn(); self.check_win_after_move(); self.post_step()
 
             # draw

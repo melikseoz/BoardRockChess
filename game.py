@@ -11,7 +11,7 @@ from actors import HumanPlayer, HunterCPU, TargetCPU
 from powerups import PowerUp, SpeedPowerUp, TimeStopPowerUp
 
 CAPTION = (
-    "Hunter-Human-Target • QWE/ASD/ZXC • S=Skip • O=Obstacles • F=Fullscreen • R=Restart • ESC=Quit"
+    "Hunter-Human-Target • QWE/ASD/ZXC • S=Skip • O=Obstacles • H=Fullscreen • B=Restart • ESC=Quit"
 )
 
 
@@ -270,7 +270,7 @@ class Game:
         # global controls
         if key == pygame.K_ESCAPE:
             pygame.quit(); sys.exit()
-        if key == pygame.K_f:
+        if key == pygame.K_h:
             self.fullscreen = not self.fullscreen
             self._apply_display_mode()
             return
@@ -284,7 +284,7 @@ class Game:
                 self.obstacles.clear()
                 self.obstacles_styles = {}
             return
-        if key == pygame.K_r:
+        if key == pygame.K_b:
             # Restart a fresh world (actors, obstacles, turn order)
             self.init_world()
             return

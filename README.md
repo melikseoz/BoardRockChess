@@ -20,6 +20,12 @@ uv run main.py
 - **R** = Restart round
 - **ESC** = Quit
 
+## Power-ups
+Randomly appearing power-ups add temporary twists:
+
+- **Speed** – green arrow; move two tiles per turn for two turns.
+- **Time Stop** – red turtle; skips the opponent's next two turns.
+
 ## Android
 The project ships with a `buildozer.spec` configuration for [Buildozer](https://github.com/kivy/buildozer).
 To create an Android APK:

@@ -1,5 +1,5 @@
 from __future__ import annotations
-import sys
+import sys, random
 from typing import Optional, Set, Dict
 
 import pygame
@@ -8,6 +8,7 @@ from config import Config
 from utils import Vec, add, cheb, DIRS_8, pick_start_positions, generate_obstacles
 from fire import FireSystem
 from actors import HumanPlayer, HunterCPU, TargetCPU
+from powerups import PowerUp, SpeedPowerUp, TimeStopPowerUp
 
 CAPTION = (
     "Hunter-Human-Target • QWE/ASD/ZXC • S=Skip • O=Obstacles • F=Fullscreen • R=Restart • ESC=Quit"
@@ -38,6 +39,9 @@ class Game:
         self.obstacles_styles: Dict[Vec, str] = {}
         # fires
         self.fire: FireSystem | None = None
+
+        # power-ups
+        self.powerups: list[PowerUp] = []
 
         # Controls: qwe/ asd / zxc ; S=skip
         self.key_to_dir: Dict[int, Optional[Vec]] = {
@@ -78,6 +82,9 @@ class Game:
         # init fires (clears any prior fires)
         self.fire = FireSystem(self.cfg, self.cfg.grid_w, self.cfg.grid_h)
         self.fire.clear()
+
+        # clear power-ups
+        self.powerups.clear()
 
         # Human → Hunter → Human → Hunter → Target
         self.turn_order = [self.human, self.hunter, self.human, self.hunter, self.target]
@@ -141,12 +148,34 @@ class Game:
             if a and a.alive and self.fire.cell_in_fire(a.pos):
                 self.kill_actor(a)
 
+    def maybe_spawn_powerup(self) -> None:
+        if len(self.powerups) >= self.cfg.powerup_max:
+            return
+        if random.random() >= self.cfg.powerup_spawn_chance:
+            return
+        occupied = {a.pos for a in [self.human, self.hunter, self.target] if a}
+        if self.obstacles_enabled:
+            occupied |= self.obstacles
+        occupied |= {pu.pos for pu in self.powerups}
+        for _ in range(20):
+            x = random.randrange(self.cfg.grid_w)
+            y = random.randrange(self.cfg.grid_h)
+            pos = (x, y)
+            if pos in occupied:
+                continue
+            if self.fire and self.fire.cell_in_fire(pos):
+                continue
+            cls = random.choice([SpeedPowerUp, TimeStopPowerUp])
+            self.powerups.append(cls(pos))
+            break
+
     def post_step(self) -> None:
         # Fires expire, perhaps spawn one, then check for any immediate kills
         if self.fire:
             self.fire.update(self.step_counter)
             self.fire.maybe_spawn(self.step_counter, self.obstacles, self.obstacles_styles)
             self.check_fire_kills()
+        self.maybe_spawn_powerup()
         # handle respawn countdowns
         self.decrement_respawns()
 
@@ -194,6 +223,13 @@ class Game:
                 r = max(3, cell // 3)
                 pygame.draw.circle(self.screen, rock_color, (cx, cy), r)
 
+    def draw_powerups(self) -> None:
+        if not self.powerups:
+            return
+        assert self.screen
+        for pu in self.powerups:
+            pu.draw(self.screen, self.cfg)
+
     
 
     def draw_actor(self, pos: Vec, color: tuple[int,int,int]) -> None:
@@ -210,6 +246,9 @@ class Game:
 
     # ------------ turn logic ------------
     def advance_turn(self) -> None:
+        current = self.turn_order[self.turn_idx]
+        if getattr(current, "speed_turns", 0) > 0:
+            current.speed_turns -= 1
         self.turn_idx = (self.turn_idx + 1) % len(self.turn_order)
         self.step_counter += 1
 
@@ -250,12 +289,22 @@ class Game:
         if self.winner is None and current is self.human and self.human.alive:
             if key in self.key_to_dir:
                 delta = self.key_to_dir[key]
-                if self.human.try_move(delta, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled):
+                if delta is None:
+                    self.advance_turn()
+                    self.post_step()
+                    return
+                steps = 2 if self.human.speed_turns > 0 else 1
+                for _ in range(steps):
+                    if not self.human.try_move(delta, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled):
+                        break
+                    self.human.move(self.human.pos, self)
                     if self.fire and self.fire.cell_in_fire(self.human.pos):
                         self.kill_actor(self.human)
-                    self.advance_turn()
                     self.check_win_after_move()
-                    self.post_step()
+                    if not self.human.alive or self.winner:
+                        break
+                self.advance_turn()
+                self.post_step()
 
     # ------------ main loop ------------
     def run(self) -> None:
@@ -277,7 +326,10 @@ class Game:
             # AI sub-turns resolve automatically
             if self.winner is None:
                 current = self.turn_order[self.turn_idx]
-                if current is self.human:
+                if getattr(current, 'skip_turns', 0) > 0:
+                    current.skip_turns -= 1
+                    self.advance_turn(); self.post_step()
+                elif current is self.human:
                     if self.human.alive:
                         pass  # wait for keydown (one move per press)
                     else:
@@ -285,24 +337,35 @@ class Game:
                         self.advance_turn(); self.post_step()
                 elif current is self.hunter:
                     if self.hunter.alive:
-                        nxt = self.hunter.decide(self.target.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
-                        self.hunter.set_pos(nxt)
-                        if self.fire and self.fire.cell_in_fire(self.hunter.pos):
-                            self.kill_actor(self.hunter)
-                    self.advance_turn(); self.check_win_after_move(); self.post_step()
+                        steps = 2 if self.hunter.speed_turns > 0 else 1
+                        for _ in range(steps):
+                            nxt = self.hunter.decide(self.target.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
+                            self.hunter.move(nxt, self)
+                            if self.fire and self.fire.cell_in_fire(self.hunter.pos):
+                                self.kill_actor(self.hunter)
+                            self.check_win_after_move()
+                            if not self.hunter.alive or self.winner:
+                                break
+                    self.advance_turn(); self.post_step()
                 elif current is self.target:
                     if self.target.alive:
-                        nxt = self.target.decide(self.human.pos, self.hunter.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
-                        self.target.set_pos(nxt)
-                        if self.fire and self.fire.cell_in_fire(self.target.pos):
-                            self.kill_actor(self.target)
-                    self.advance_turn(); self.check_win_after_move(); self.post_step()
+                        steps = 2 if self.target.speed_turns > 0 else 1
+                        for _ in range(steps):
+                            nxt = self.target.decide(self.human.pos, self.hunter.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
+                            self.target.move(nxt, self)
+                            if self.fire and self.fire.cell_in_fire(self.target.pos):
+                                self.kill_actor(self.target)
+                            self.check_win_after_move()
+                            if not self.target.alive or self.winner:
+                                break
+                    self.advance_turn(); self.post_step()
 
             # draw
             self.draw_grid()
             self.draw_obstacles()
             if self.fire:
                 self.fire.draw(self.screen, self.cfg, self.step_counter)
+            self.draw_powerups()
             assert self.human and self.hunter and self.target
             if self.target.alive:
                 self.draw_actor(self.target.pos, self.cfg.colors["target"])  # draw target first so chasers on top

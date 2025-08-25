@@ -24,6 +24,8 @@ class Config:
     fire_lifetime: int = 8           # measured in sub-turns
     fire_spawn_chance: float = 0.25  # attempt per sub-turn, at most 1 fire spawned
     respawn_delay: int = 5           # sub-turns until an actor respawns
+    powerup_spawn_chance: float = 0.1  # chance per sub-turn to spawn a power-up
+    powerup_max: int = 3
 
     # Colors
     colors: Dict[str, Color] = field(default_factory=lambda: {
@@ -56,7 +58,8 @@ class Config:
                 # known simple fields
                 for k in ("grid_w","grid_h","cell","margin","fps","min_start_dist",
                           "obstacles_enabled_default","obstacle_density","tree_ratio",
-                          "fire_max","fire_lifetime","fire_spawn_chance","respawn_delay"):
+                          "fire_max","fire_lifetime","fire_spawn_chance","respawn_delay",
+                          "powerup_spawn_chance","powerup_max"):
                     if k in data:
                         setattr(cfg, k, data[k])
                 # colors

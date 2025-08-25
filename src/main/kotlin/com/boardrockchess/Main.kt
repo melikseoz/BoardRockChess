@@ -1,9 +1,13 @@
 package com.boardrockchess
 
-/** Entry point placeholder. Interactive loop not implemented. */
-fun main() {
-    val game = Game()
-    game.initWorld()
-    println("Game initialized with human at ${'$'}{game.human?.pos}")
-}
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration
 
+/** Launches the libGDX UI for the Kotlin game. */
+fun main() {
+    val config = Lwjgl3ApplicationConfiguration().apply {
+        setTitle("BoardRockChess")
+        setWindowedMode(720, 720)
+    }
+    Lwjgl3Application(BoardRockApp(), config)
+}

@@ -48,6 +48,22 @@ class Game(val cfg: Config = Config.load()) {
 
     fun inBounds(p: Vec) = p.first in 0 until cfg.gridW && p.second in 0 until cfg.gridH
 
+    fun advanceTurn() {
+        turnIdx = (turnIdx + 1) % turnOrder.size
+        stepCounter += 1
+    }
+
+    fun checkWinAfterMove() {
+        val h = human
+        val hu = hunter
+        val t = target
+        if (h != null && t != null && h.alive && h.pos == t.pos) {
+            winner = h.name
+        } else if (hu != null && t != null && hu.alive && hu.pos == t.pos) {
+            winner = hu.name
+        }
+    }
+
     fun killActor(actor: Actor) {
         if (actor.dead) return
         actor.deaths += 1

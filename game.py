@@ -11,7 +11,7 @@ from actors import HumanPlayer, HunterCPU, TargetCPU
 from powerups import PowerUp, SpeedPowerUp, TimeStopPowerUp
 
 CAPTION = (
-    "Hunter-Human-Target • QWE/ASD/ZXC • S=Skip • O=Obstacles • H=Fullscreen • B=Restart • ESC=Quit"
+    "Board Rock Chess • QWE/ASD/ZXC • S=Skip • O=Obstacles • H=Fullscreen • B=Restart • ESC=Quit"
 )
 
 
@@ -387,7 +387,7 @@ class Game:
                 self.draw_actor(self.human.pos,  self.cfg.colors["human"])
 
             self.draw_text(f"Turn: {self.turn_order[self.turn_idx].name}   Steps: {self.step_counter}", 8)
-            self.draw_text("Move: QWE/ASD/ZXC • S=Skip • O=Toggle Obstacles • F=Fullscreen • R=Restart • ESC=Quit", 30)
+            self.draw_text("Move: QWE/ASD/ZXC • S=Skip • O=Toggle Obstacles • H=Fullscreen • B=Restart • ESC=Quit", 30)
             self.draw_text(f"Deaths – H:{self.human.deaths}  Hun:{self.hunter.deaths}  T:{self.target.deaths}", 52)
             if self.human.dead:
                 self.draw_text(f"H respawns in {self.human.respawn_ticks}", 72)

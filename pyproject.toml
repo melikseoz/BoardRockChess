@@ -8,4 +8,7 @@ dependencies = [
     "buildozer",
     "setuptools",
     "cython",
+    "pip",
+    "colorama",
+    "jinja",
 ]

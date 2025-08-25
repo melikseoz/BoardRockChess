@@ -17,15 +17,15 @@ class BoardRockApp : ApplicationAdapter() {
     private lateinit var cfg: Config
 
     private val keyToDir = mapOf(
-        Input.Keys.Q to vec(-1, -1),
-        Input.Keys.W to vec(0, -1),
-        Input.Keys.E to vec(1, -1),
+        Input.Keys.Q to vec(-1, 1),
+        Input.Keys.W to vec(0, 1),
+        Input.Keys.E to vec(1, 1),
         Input.Keys.A to vec(-1, 0),
         Input.Keys.S to null,
         Input.Keys.D to vec(1, 0),
-        Input.Keys.Z to vec(-1, 1),
-        Input.Keys.X to vec(0, 1),
-        Input.Keys.C to vec(1, 1)
+        Input.Keys.Z to vec(-1, -1),
+        Input.Keys.X to vec(0, -1),
+        Input.Keys.C to vec(1, -1)
     )
 
     override fun create() {

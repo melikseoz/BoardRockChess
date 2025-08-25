@@ -6,3 +6,5 @@ bin/
 *.apk
 build/
 .gradle/
+gradle/
+local.properties

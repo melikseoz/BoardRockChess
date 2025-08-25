@@ -15,6 +15,9 @@ class Actor:
         self.dead: bool = False
         self.respawn_ticks: int = 0
         self.last_death_pos: Optional[Vec] = None
+        # power-up effects
+        self.speed_turns: int = 0   # number of upcoming turns with double-step
+        self.skip_turns: int = 0    # number of upcoming turns to skip
 
     @property
     def alive(self) -> bool:

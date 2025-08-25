@@ -9,8 +9,10 @@ if TYPE_CHECKING:
     from game import Game
     from actors import Actor
 
+
 class PowerUp:
     """Base power-up with position and sprite rendering"""
+
     def __init__(self, pos: Vec):
         self.pos = pos
         self.active = True
@@ -27,31 +29,51 @@ class PowerUp:
         r = max(3, cell // 3)
         pygame.draw.circle(screen, (250, 250, 250), (cx, cy), r)
 
-class TeleportPowerUp(PowerUp):
-    color = (200, 60, 200)
+
+class SpeedPowerUp(PowerUp):
+    color = (0, 200, 0)
 
     def apply(self, actor: 'Actor', game: 'Game') -> None:
         super().apply(actor, game)
-        actor.set_pos(game.find_safe_spawn(actor.pos))
+        actor.speed_turns = 2
 
     def draw(self, screen, cfg) -> None:
         cell = cfg.cell
         cx = self.pos[0] * cell + cell // 2
         cy = self.pos[1] * cell + cell // 2
         r = max(3, cell // 3)
-        points = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
+        points = [(cx - r, cy - r), (cx - r, cy + r), (cx + r, cy)]
         pygame.draw.polygon(screen, self.color, points)
 
-class HealPowerUp(PowerUp):
-    color = (255, 200, 40)
+
+class TimeStopPowerUp(PowerUp):
+    color = (200, 0, 0)
 
     def apply(self, actor: 'Actor', game: 'Game') -> None:
         super().apply(actor, game)
-        actor.deaths = max(0, actor.deaths - 1)
+        if actor is game.human and game.hunter:
+            game.hunter.skip_turns = max(game.hunter.skip_turns, 2)
+        elif actor is game.hunter and game.human:
+            game.human.skip_turns = max(game.human.skip_turns, 2)
+        else:
+            # if target picks it, slow both chasers
+            if game.human:
+                game.human.skip_turns = max(game.human.skip_turns, 2)
+            if game.hunter:
+                game.hunter.skip_turns = max(game.hunter.skip_turns, 2)
 
     def draw(self, screen, cfg) -> None:
         cell = cfg.cell
         cx = self.pos[0] * cell + cell // 2
         cy = self.pos[1] * cell + cell // 2
         r = max(3, cell // 3)
+        # body
         pygame.draw.circle(screen, self.color, (cx, cy), r)
+        # head
+        pygame.draw.circle(screen, self.color, (cx + r, cy), r // 2)
+        # legs
+        leg_r = max(2, r // 3)
+        pygame.draw.circle(screen, self.color, (cx - r, cy - r), leg_r)
+        pygame.draw.circle(screen, self.color, (cx - r, cy + r), leg_r)
+        pygame.draw.circle(screen, self.color, (cx + r // 2, cy - r), leg_r)
+        pygame.draw.circle(screen, self.color, (cx + r // 2, cy + r), leg_r)

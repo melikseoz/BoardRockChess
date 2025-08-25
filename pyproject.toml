@@ -7,4 +7,5 @@ dependencies = [
     "pygame",
     "buildozer",
     "setuptools",
+    "cython",
 ]

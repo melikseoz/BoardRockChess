@@ -41,6 +41,8 @@ class Config:
         "tree_leaf": (46, 160, 67),
         "tree_trunk": (110, 78, 48),
         "rock":      (120, 120, 130),
+        "portal_a":  (180, 90, 255),
+        "portal_b":  (80, 200, 255),
         # Fire palette (keeps legacy keys as fallbacks)
         "fire_core": (255, 120, 40),
         "fire_glow": (255, 200, 60),

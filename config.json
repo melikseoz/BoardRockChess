@@ -1,9 +1,9 @@
 {
   "grid_w": 40,
-  "grid_h": 40,
+  "grid_h": 32,
   "cell": 18,
   "margin": 1,
-  "fps": 60,
+  "fps": 144,
   "min_start_dist": 12,
   "obstacles_enabled_default": true,
   "obstacle_density": 0.1,

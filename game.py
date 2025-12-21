@@ -34,7 +34,7 @@ class Game:
         self.step_counter: int = 0
         self.portal_a: Optional[Vec] = None
         self.portal_b: Optional[Vec] = None
-        self.portal_refresh_interval: int = 5
+        self.portal_refresh_interval: int = 40
 
         # obstacles
         self.obstacles_enabled: bool = self.cfg.obstacles_enabled_default
@@ -226,6 +226,8 @@ class Game:
             return
         if self.portal_refresh_interval <= 0:
             return
+        if self.step_counter<=1:
+            self.generate_portals()
         if self.step_counter % self.portal_refresh_interval == 0:
             self.generate_portals()
 
@@ -485,8 +487,9 @@ class Game:
                 self.draw_actor(self.human.pos,  self.cfg.colors["human"])
 
             self.draw_text(f"Turn: {self.turn_order[self.turn_idx].name}   Steps: {self.step_counter}", 8)
-            self.draw_text("Move: QWE/ASD/ZXC • S=Skip • O=Toggle Obstacles • H=Fullscreen • B=Restart • ESC=Quit", 30)
-            self.draw_text(f"Deaths – H:{self.human.deaths}  Hun:{self.hunter.deaths}  T:{self.target.deaths}", 52)
+            self.draw_text("Move: QWE/ASD/ZXC • S=Skip • O=Toggle Obstacles", 30)
+            self.draw_text("H=Fullscreen • B=Restart • ESC=Quit", 52)
+            self.draw_text(f"Deaths – H:{self.human.deaths}  Hun:{self.hunter.deaths}  T:{self.target.deaths}", 74)
             if self.human.dead:
                 self.draw_text(f"H respawns in {self.human.respawn_ticks}", 72)
             if self.hunter.dead:

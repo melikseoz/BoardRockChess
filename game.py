@@ -32,6 +32,9 @@ class Game:
         self.turn_idx: int = 0
         self.winner: Optional[str] = None
         self.step_counter: int = 0
+        self.portal_a: Optional[Vec] = None
+        self.portal_b: Optional[Vec] = None
+        self.portal_refresh_interval: int = 5
 
         # obstacles
         self.obstacles_enabled: bool = self.cfg.obstacles_enabled_default
@@ -176,6 +179,70 @@ class Game:
             self.powerups.append(cls(pos, self.cfg.powerup_lifetime))
             break
 
+    def portal_blocked(self, pos: Vec) -> bool:
+        if self.obstacles_enabled and pos in self.obstacles:
+            return True
+        if self.fire and any(pos in f.cells for f in self.fire.fires):
+            return True
+        if any(a and a.alive and a.pos == pos for a in (self.human, self.hunter, self.target)):
+            return True
+        if any(pu.pos == pos for pu in self.powerups):
+            return True
+        return False
+
+    def generate_portals(self) -> None:
+        """Place two linked portals avoiding obstacles, fires, actors, and power-ups."""
+        candidates: list[Vec] = []
+        attempts = 0
+        blocked: Set[Vec] = set()
+        if self.obstacles_enabled:
+            blocked |= set(self.obstacles)
+        if self.fire:
+            for f in self.fire.fires:
+                blocked.update(f.cells)
+        blocked.update(pu.pos for pu in self.powerups)
+        for a in (self.human, self.hunter, self.target):
+            if a:
+                blocked.add(a.pos)
+
+        while len(candidates) < 2 and attempts < 400:
+            attempts += 1
+            pos = (random.randrange(self.cfg.grid_w), random.randrange(self.cfg.grid_h))
+            if pos in blocked or pos in candidates:
+                continue
+            if self.portal_blocked(pos):
+                continue
+            candidates.append(pos)
+
+        if len(candidates) == 2:
+            self.portal_a, self.portal_b = candidates
+        elif len(candidates) == 1:
+            # fallback to keep at least one portal if generation partially failed
+            self.portal_a, self.portal_b = candidates[0], candidates[0]
+        # else keep previous portals if generation failed
+
+    def maybe_refresh_portals(self) -> None:
+        if self.step_counter == 0:
+            return
+        if self.portal_refresh_interval <= 0:
+            return
+        if self.step_counter % self.portal_refresh_interval == 0:
+            self.generate_portals()
+
+    def handle_portal(self, actor) -> None:
+        """Teleport actor if standing on a portal."""
+        if not actor.alive:
+            return
+        if not (self.portal_a and self.portal_b):
+            return
+        dest: Optional[Vec] = None
+        if actor.pos == self.portal_a:
+            dest = self.portal_b
+        elif actor.pos == self.portal_b:
+            dest = self.portal_a
+        if dest:
+            actor.move(dest, self)
+
     def post_step(self) -> None:
         # Fires expire, perhaps spawn one, then check for any immediate kills
         if self.fire:
@@ -238,7 +305,23 @@ class Game:
         for pu in self.powerups:
             pu.draw(self.screen, self.cfg)
 
-    
+    def draw_portals(self) -> None:
+        if not (self.portal_a and self.portal_b):
+            return
+        assert self.screen
+        cell = self.cfg.cell
+        colors = (
+            self.cfg.colors.get("portal_a", (180, 90, 255)),
+            self.cfg.colors.get("portal_b", (80, 200, 255)),
+        )
+        for pos, col in zip((self.portal_a, self.portal_b), colors):
+            rx = pos[0] * cell
+            ry = pos[1] * cell
+            center = (rx + cell // 2, ry + cell // 2)
+            outer_r = max(3, cell // 2 - 1)
+            inner_r = max(2, outer_r // 2)
+            pygame.draw.circle(self.screen, col, center, outer_r, width=2)
+            pygame.draw.circle(self.screen, col, center, inner_r)
 
     def draw_actor(self, pos: Vec, color: tuple[int,int,int]) -> None:
         assert self.screen
@@ -256,6 +339,7 @@ class Game:
     def advance_turn(self) -> None:
         self.turn_idx = (self.turn_idx + 1) % len(self.turn_order)
         self.step_counter += 1
+        self.maybe_refresh_portals()
 
     def check_win_after_move(self) -> None:
         assert self.human and self.hunter and self.target
@@ -278,8 +362,15 @@ class Game:
             self.obstacles_enabled = not self.obstacles_enabled
             # re-generate to avoid covering actors
             if self.obstacles_enabled:
-                self.obstacles, self.obstacles_styles = generate_obstacles(self.cfg.grid_w, self.cfg.grid_h, self.cfg.obstacle_density,
-                                                    {self.human.pos, self.hunter.pos, self.target.pos}, self.cfg.tree_ratio)
+                exclude = {self.human.pos, self.hunter.pos, self.target.pos}
+                if self.portal_a:
+                    exclude.add(self.portal_a)
+                if self.portal_b:
+                    exclude.add(self.portal_b)
+                self.obstacles, self.obstacles_styles = generate_obstacles(
+                    self.cfg.grid_w, self.cfg.grid_h, self.cfg.obstacle_density,
+                    exclude, self.cfg.tree_ratio
+                )
             else:
                 self.obstacles.clear()
                 self.obstacles_styles = {}
@@ -298,11 +389,13 @@ class Game:
                 if self.human.try_move(delta, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled):
                     moved = True
                     self.human.move(self.human.pos, self)
+                    self.handle_portal(self.human)
                     if self.fire and self.fire.cell_in_fire(self.human.pos):
                         self.kill_actor(self.human)
                     if self.human.alive and self.human.speed_turns > 0 and delta is not None:
                         if self.human.try_move(delta, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled):
                             self.human.move(self.human.pos, self)
+                            self.handle_portal(self.human)
                             if self.fire and self.fire.cell_in_fire(self.human.pos):
                                 self.kill_actor(self.human)
                 if moved:
@@ -347,11 +440,13 @@ class Game:
                     if self.hunter.alive:
                         nxt = self.hunter.decide(self.target.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
                         self.hunter.move(nxt, self)
+                        self.handle_portal(self.hunter)
                         if self.fire and self.fire.cell_in_fire(self.hunter.pos):
                             self.kill_actor(self.hunter)
                         if self.hunter.alive and self.hunter.speed_turns > 0:
                             nxt = self.hunter.decide(self.target.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
                             self.hunter.move(nxt, self)
+                            self.handle_portal(self.hunter)
                             if self.fire and self.fire.cell_in_fire(self.hunter.pos):
                                 self.kill_actor(self.hunter)
                         if self.hunter.speed_turns > 0:
@@ -361,11 +456,13 @@ class Game:
                     if self.target.alive:
                         nxt = self.target.decide(self.human.pos, self.hunter.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
                         self.target.move(nxt, self)
+                        self.handle_portal(self.target)
                         if self.fire and self.fire.cell_in_fire(self.target.pos):
                             self.kill_actor(self.target)
                         if self.target.alive and self.target.speed_turns > 0:
                             nxt = self.target.decide(self.human.pos, self.hunter.pos, self.cfg.grid_w, self.cfg.grid_h, self.obstacles, self.obstacles_enabled)
                             self.target.move(nxt, self)
+                            self.handle_portal(self.target)
                             if self.fire and self.fire.cell_in_fire(self.target.pos):
                                 self.kill_actor(self.target)
                         if self.target.speed_turns > 0:
@@ -378,6 +475,7 @@ class Game:
             if self.fire:
                 self.fire.draw(self.screen, self.cfg, self.step_counter)
             self.draw_powerups()
+            self.draw_portals()
             assert self.human and self.hunter and self.target
             if self.target.alive:
                 self.draw_actor(self.target.pos, self.cfg.colors["target"])  # draw target first so chasers on top
